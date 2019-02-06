@@ -6,7 +6,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Program.fs" />
+    <Compile Include="Tut4.fs" />
+    <Compile Include="Tut3.fs" />
+    <Compile Include="Tut2.fs" />
+    <Compile Include="Tut1.fs" />
   </ItemGroup>
 
 </Project>
