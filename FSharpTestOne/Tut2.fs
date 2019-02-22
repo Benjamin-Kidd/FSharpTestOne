@@ -1,4 +1,4 @@
-﻿module a.Tut2
+﻿module Tut2
 
 type Details = 
     {Name: string
@@ -37,3 +37,12 @@ let firstRoom ={
 
 
 firstRoom
+(*
+val it : Room = {Details = {Name = "First Room";
+                            Description = "You're standing in a room";};
+                 Items = [];
+                 Exits = {North = NoExit None;
+                          South = NoExit None;
+                          East = NoExit None;
+                          West = NoExit None;};}
+*)

@@ -1,4 +1,4 @@
-﻿module a.Tut4
+﻿module Tut4
 
 type Details = 
     {Name: string
@@ -224,6 +224,7 @@ gameEngine.ApplyUpdate(move south)
 
 let rand = System.Random()
 
+//run this loop to auto explore the rooms
 let playerController =
     MailboxProcessor.Start(fun inbox ->
         let rec innerLoop state=
@@ -248,7 +249,7 @@ let playerController =
 
 gameEngine.ResetState(gameWorld)
 
-playerController.Start()
+//run this line to stop auto wandering
 playerController.Post("Stop")
 //gameWorld
 //    |> move south

@@ -1,41 +1,44 @@
-﻿module Tut3
+﻿module Tut5
+// WORK IN PROGRESS
+//
+// --------- Model ---------
+//
 
-type Details = 
-    {Name: string
-     Description: string}
+type Details =
+    { Name: string
+      Description: string }
 
-type Item ={
-    Details:Details}
+type Item =
+    { Details: Details }
 
 type RoomId =
-|RoomId of string
+    | RoomId of string
 
 type Exit =
     | PassableExit of string * destination: RoomId
-    | LockedExit of string * key: Item * next:Exit
+    | LockedExit of string * key: Item * next: Exit 
     | NoExit of string option
 
+type Exits =
+    { North: Exit
+      South: Exit
+      East: Exit
+      West: Exit }
 
-type Exits ={
-    North: Exit 
-    South: Exit
-    East: Exit
-    West: Exit}
+type Room =
+    { Id: RoomId
+      Details: Details
+      Items: Item list
+      Exits: Exits }
 
-type Room ={
-   Id: RoomId
-   Details: Details 
-   Items: Item list
-   Exits: Exits}
+type Player =
+    { Details: Details
+      Location: RoomId
+      Inventory: Item list }
 
-type Player ={
-    Details: Details
-    Location: RoomId
-    Inventory: Item list}
-
-type World ={
-    Rooms: Map<RoomId, Room>
-    Player: Player}
+type World =
+    { Rooms: Map<RoomId, Room> 
+      Player: Player }
 
 // --------- Initial World ---------
 
@@ -147,51 +150,115 @@ let extractDetailsFromRoom (room: Room) =
 let describeCurrentRoom world =
     world.Player.Location
     |> getRoom world
-    >>= (switch extractDetailsFromRoom >> bind (switch describeDetails))
+    |> (bind (switch extractDetailsFromRoom) >> bind (switch describeDetails))
 
-let north ({North = northExit}: Exits) = northExit
-let south ({South = southExit}: Exits) = southExit
-let east ({East = eastExit}: Exits) = eastExit
-let west ({West = westExit}: Exits) = westExit
+let north exits = exits.North
+let south exits = exits.South
+let east exits = exits.East
+let west exits = exits.West
 
 let getCurrentRoom world =
     world.Player.Location
     |> getRoom world
 
-let setCurrentRoom world room ={
-    world with
-        Player = {world.Player with Location = room.Id}}
+let setCurrentRoom world room =
+    { world with
+        Player = { world.Player with Location = room.Id} }
 
 let getExit direction exits =
     match (direction exits) with
-    | PassableExit (_, roomId) -> Success roomId 
-    | LockedExit (_,_,_) -> Failure "There is a locked door in that direction."
+    | PassableExit (_, roomId) -> Success roomId
+    | LockedExit (_) -> Failure "There is a locked door in that direction."
     | NoExit (_) -> Failure "There is no room in that direction."
 
-let move direction world = 
+let move direction world =
     world
     |> getCurrentRoom
-    >>= switch (fun room -> room.Exits)
+    >>= switch (fun room -> room.Exits) 
     >>= getExit direction
     >>= getRoom world
     >>= switch (setCurrentRoom world)
 
 let displayResult result =
-    match result with 
+    match result with
     | Success s -> printf "%s" s
     | Failure f -> printf "%s" f
+
+type GameEvent =
+    | UpdateState of (World -> Result<World, string>)
+    | ResetState of World
+    | EndGameLoop
+
+let applyUpdate updateFunc worldState =
+    match updateFunc worldState with
+    | Success newState ->
+        describeCurrentRoom newState |> displayResult
+        newState
+    | Failure message ->
+        printfn "\n\n%s\n" message
+        worldState
+
+type GameEngine(initialState: World) =
+    let gameLoop =
+        MailboxProcessor.Start(fun inbox ->
+            let rec innerLoop worldState =
+                async {
+                    let! eventMsg = inbox.Receive()
+                    match eventMsg with
+                    | UpdateState updateFunc -> return! innerLoop (applyUpdate updateFunc worldState)
+                    | ResetState newState -> return! innerLoop newState
+                    | EndGameLoop -> return ()
+                }
+                
+            innerLoop initialState)
+
+    member this.ApplyUpdate(updateFunc) =
+        gameLoop.Post(UpdateState updateFunc)
+
+    member this.ResetState(newState) =
+        gameLoop.Post(ResetState newState)
+
+    member this.Stop() =
+        gameLoop.Post(EndGameLoop)
+
+let gameEngine = GameEngine(gameWorld)
+
+//
+// --------- Command Parsing --------- 
+//
+
+let expectChar expectedChar inputChars =
+    match inputChars with
+    | c :: remainingChars -> 
+        if c = expectedChar then Success (c,remainingChars)
+        else Failure (sprintf "Expected '%c', got '%c'" expectedChar c)
+    | [] -> 
+        Failure (sprintf "Expected '%c', reached end of input" expectedChar)
     
-gameWorld
-    |> move south
-    >>= move north
-    >>= move west
-    |> bind describeCurrentRoom
-    |> displayResult
-(*
-    A cozy room
+        
 
-    This room seems very cozy, as if someone had made a home here.  Various personal belongings are strewn about.
+let stringToCharList str =
+    List.ofSeq str
 
-    val it : unit = ()
+let orParse parser1 parser2 inputChars =
+    match parser1 inputChars with
+    | Success result -> Success result
+    | Failure _ -> parser2 inputChars
 
-*)
+let listParse parserList inputChars =
+    match orParse p::rem inputChars with
+    | Success 
+    
+        
+
+stringToCharList "sake"
+|> orParse (expectChar 'r') (expectChar 't')
+|> printfn "%A"
+
+
+
+ 
+
+
+
+
